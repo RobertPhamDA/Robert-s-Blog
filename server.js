@@ -89,7 +89,7 @@ app.post('/comments', async (req, res) => {
 });
 
 // Mặc định trả về index.html cho mọi route không xác định
-app.get('/(.*)', (req, res) => {
+app.get(/.*/, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
