@@ -14,7 +14,7 @@ const server = http.createServer(app);
 const allowedOrigins = [
     "http://localhost:3000", 
     "http://127.0.0.1:3000",
-    "https://robertblog.vercel.app" 
+    "https://robert-s-blog.vercel.app" 
 ];
 
 // 2. KHỞI TẠO SOCKET.IO SAU KHI ĐÃ CÓ allowedOrigins
