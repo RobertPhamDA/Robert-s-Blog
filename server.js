@@ -5,39 +5,39 @@ const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
-const path = require('path'); // Thêm thư viện path để xử lý đường dẫn
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { 
-            cors: {
-                origin: allowedOrigins,
-                methods: ["GET", "POST"]
-            }
-});
 
+// 1. KHAI BÁO BIẾN allowedOrigins TRƯỚC (Xóa dấu / ở cuối link vercel)
 const allowedOrigins = [
     "http://localhost:3000", 
     "http://127.0.0.1:3000",
-    "https://robertblog.vercel.app/" // Thay bằng link Vercel bạn sẽ nhận được
+    "https://robertblog.vercel.app" 
 ];
 
-// --- CẤU HÌNH DATABASE LINH HOẠT ---
-// Nếu có biến DATABASE_URL (trên Render), nó sẽ dùng cái đó.
-// Nếu không có, nó sẽ dùng thông tin localhost của bạn.
-const isProduction = process.env.NODE_ENV === 'production';
+// 2. KHỞI TẠO SOCKET.IO SAU KHI ĐÃ CÓ allowedOrigins
+const io = new Server(server, { 
+    cors: {
+        origin: allowedOrigins,
+        methods: ["GET", "POST"]
+    }
+});
 
+// 3. CẤU HÌNH DATABASE
+const isProduction = process.env.NODE_ENV === 'production';
 const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:123456@localhost:5432/postgres';
 
 const pool = new Pool({
     connectionString: connectionString,
-    // Supabase trên Cloud yêu cầu SSL, nhưng Local thì không cần
     ssl: isProduction ? { rejectUnauthorized: false } : false
 });
 
+// 4. CẤU HÌNH MIDDLEWARE
 app.use(cors({
     origin: function (origin, callback) {
-        // Cho phép các origin trong danh sách hoặc không có origin (như các app mobile/curl)
+        // Cho phép các origin trong danh sách hoặc không có origin (như khi dùng Postman/Curl)
         if (!origin || allowedOrigins.indexOf(origin) !== -1) {
             callback(null, true);
         } else {
@@ -47,8 +47,6 @@ app.use(cors({
     credentials: true
 }));
 app.use(express.json());
-
-// Sử dụng path.join để dù chạy trên Linux hay Windows đều không lỗi
 app.use(express.static(path.join(__dirname, 'public')));
 
 const SECRET = process.env.JWT_SECRET || "mysecretkey";
@@ -112,7 +110,7 @@ app.get(/.*/, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Render sẽ cấp một cổng (PORT) ngẫu nhiên, Local thì dùng 3000
+// Lắng nghe cổng
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
