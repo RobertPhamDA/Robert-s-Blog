@@ -10,8 +10,17 @@ const path = require('path'); // Thêm thư viện path để xử lý đường
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { 
-    cors: { origin: "*" } 
+            cors: {
+                origin: allowedOrigins,
+                methods: ["GET", "POST"]
+            }
 });
+
+const allowedOrigins = [
+    "http://localhost:3000", 
+    "http://127.0.0.1:3000",
+    "https://robertblog.vercel.app/" // Thay bằng link Vercel bạn sẽ nhận được
+];
 
 // --- CẤU HÌNH DATABASE LINH HOẠT ---
 // Nếu có biến DATABASE_URL (trên Render), nó sẽ dùng cái đó.
@@ -26,7 +35,17 @@ const pool = new Pool({
     ssl: isProduction ? { rejectUnauthorized: false } : false
 });
 
-app.use(cors());
+app.use(cors({
+    origin: function (origin, callback) {
+        // Cho phép các origin trong danh sách hoặc không có origin (như các app mobile/curl)
+        if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            callback(new Error('Chặn bởi CORS'));
+        }
+    },
+    credentials: true
+}));
 app.use(express.json());
 
 // Sử dụng path.join để dù chạy trên Linux hay Windows đều không lỗi

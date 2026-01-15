@@ -3,15 +3,16 @@
 <head>
     <title>Realtime Blog</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-    <script src="/socket.io/socket.io.js"></script>
+    <!-- THAY ĐỔI: Dùng CDN để chạy được trên Vercel -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 </head>
 <body class="container mt-4">
+    <!-- (Giữ nguyên các thẻ HTML div auth-section và blog-section của bạn) -->
     <div id="auth-section">
         <h3>Đăng nhập / Đăng ký</h3>
         <input id="user" class="form-control mb-2" placeholder="Username">
         <input id="pass" type="password" class="form-control mb-2" placeholder="Password">
         <button class="btn btn-primary" onclick="login()">Vào Blog</button>
-        <!-- Thêm nút này -->
         <button class="btn btn-outline-secondary" onclick="register()">Đăng ký tài khoản</button>
     </div>
 
@@ -25,25 +26,29 @@
     </div>
 
     <script>
-        const socket = io();
+        // PHÂN ĐỊNH MÔI TRƯỜNG CHI TIẾT
+        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        
+        const BACKEND_URL = isLocal 
+            ? 'http://localhost:3000' 
+            : 'https://robert-s-blog.onrender.com/'; // CHÚ Ý: Thay link Render của bạn vào đây
+
+        // Kết nối socket với URL đã phân định
+        const socket = io(BACKEND_URL);
         let token = "";
 
-        // --- HÀM ĐĂNG KÝ MỚI ---
+        // TẤT CẢ CÁC HÀM FETCH ĐỀU DÙNG BACKEND_URL
         async function register() {
-            const res = await fetch('/register', {
+            const res = await fetch(`${BACKEND_URL}/register`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({username: user.value, password: pass.value})
             });
-            if (res.ok) {
-                alert("Đăng ký thành công! Giờ bạn có thể đăng nhập.");
-            } else {
-                alert("Lỗi đăng ký (có thể tên user đã tồn tại)");
-            }
+            alert(res.ok ? "Đăng ký xong!" : "Lỗi đăng ký");
         }
 
         async function login() {
-            const res = await fetch('/login', {
+            const res = await fetch(`${BACKEND_URL}/login`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({username: user.value, password: pass.value})
@@ -58,17 +63,34 @@
         }
 
         async function loadPosts() {
-            const res = await fetch('/posts');
+            const res = await fetch(`${BACKEND_URL}/posts`);
             const posts = await res.json();
+            document.getElementById('posts').innerHTML = ""; // Clear để tránh lặp bài khi load lại
             posts.forEach(addPostToUI);
         }
 
         async function createPost() {
-            await fetch('/posts', {
+            await fetch(`${BACKEND_URL}/posts`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({title: title.value, content: content.value})
             });
+        }
+
+        async function loadComments(postId) {
+            const res = await fetch(`${BACKEND_URL}/comments/` + postId);
+            const cmts = await res.json();
+            cmts.forEach(addCmtToUI);
+        }
+
+        async function sendCmt(postId) {
+            const input = document.getElementById('in-' + postId);
+            await fetch(`${BACKEND_URL}/comments`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({post_id: postId, content: input.value})
+            });
+            input.value = "";
         }
 
         function addPostToUI(post) {
@@ -82,28 +104,11 @@
             loadComments(post.id);
         }
 
-        async function loadComments(postId) {
-            const res = await fetch('/comments/' + postId);
-            const cmts = await res.json();
-            cmts.forEach(addCmtToUI);
-        }
-
-        async function sendCmt(postId) {
-            const input = document.getElementById('in-' + postId);
-            await fetch('/comments', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({post_id: postId, content: input.value})
-            });
-            input.value = "";
-        }
-
         function addCmtToUI(cmt) {
             const area = document.getElementById('cmts-' + cmt.post_id);
             if(area) area.innerHTML += `<div class="small text-muted">- ${cmt.content}</div>`;
         }
 
-        // LẮNG NGHE REALTIME
         socket.on('new_post', (post) => addPostToUI(post));
         socket.on('new_comment', (cmt) => addCmtToUI(cmt));
     </script>
